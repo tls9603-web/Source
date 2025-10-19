@@ -74,4 +74,25 @@ public:
 
     // HUD를 갱신하는 함수
     void UpdateHUD();
+
+    // 현재 웨이브 번호
+    int32 CurrentWave;
+
+    // 최대 웨이브 수
+    int32 MaxWave;
+
+    // 각 웨이브의 제한 시간
+    float WaveTimeLimit;
+
+    // 웨이브별로 스폰할 아이템 개수를 담을 배열
+    TArray<int32> ItemsToSpawnPerWave;
+
+    // 웨이브 시작/종료를 위한 함수 선언
+    void StartWave();
+    void EndWave();
+    void OnWaveTimeUp(); // 타이머가 끝나면 호출될 함수
+
+private:
+    // 웨이브 시간 측정을 위한 타이머 핸들
+    FTimerHandle WaveTimerHandle;
 };

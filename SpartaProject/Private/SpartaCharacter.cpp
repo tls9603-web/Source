@@ -1,12 +1,14 @@
 ﻿#include "SpartaCharacter.h"
 #include "SpartaPlayerController.h"
+#include "SpartaGameState.h"
 #include "EnhancedInputComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "GameFramework/CharacterMovementComponent.h" // GetCharacterMovement() 사용을 위해 추가
-#include "Kismet/GameplayStatics.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Components/TextBlock.h"
 
-// 생성자
+
 ASpartaCharacter::ASpartaCharacter()
 {
     PrimaryActorTick.bCanEverTick = false;
@@ -20,15 +22,23 @@ ASpartaCharacter::ASpartaCharacter()
     CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
     CameraComp->bUsePawnControlRotation = false;
 
-    // 스프린트 변수 초기화
+    OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverheadWidget"));
+    OverheadWidget->SetupAttachment(GetMesh());
+    OverheadWidget->SetWidgetSpace(EWidgetSpace::Screen);
+
     NormalSpeed = 600.0f;
     SprintSpeedMultiplier = 1.7f;
     SprintSpeed = NormalSpeed * SprintSpeedMultiplier;
     GetCharacterMovement()->MaxWalkSpeed = NormalSpeed;
 
-    // 초기 체력 설정
     MaxHealth = 100.0f;
     Health = MaxHealth;
+}
+
+void ASpartaCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+    UpdateOverheadHP();
 }
 
 // 입력 컴포넌트 설정 및 액션 바인딩
@@ -166,12 +176,18 @@ float ASpartaCharacter::GetHealth() const
     return Health;
 }
 
+// 최대 체력 반환 함수
+float ASpartaCharacter::GetMaxHealth() const
+{
+    return MaxHealth;
+}
+
 // 체력 회복 함수
 void ASpartaCharacter::AddHealth(float Amount)
 {
     // 체력을 회복시킴. 최대 체력을 초과하지 않도록 제한함
     Health = FMath::Clamp(Health + Amount, 0.0f, MaxHealth);
-    UE_LOG(LogTemp, Log, TEXT("Health increased to: %f"), Health);
+    UpdateOverheadHP();
 }
 
 // 데미지 처리 함수
@@ -182,7 +198,7 @@ float ASpartaCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
     // 체력을 데미지만큼 감소시키고, 0 이하로 떨어지지 않도록 Clamp
     Health = FMath::Clamp(Health - ActualDamage, 0.0f, MaxHealth);
-    UE_LOG(LogTemp, Warning, TEXT("Health decreased to: %f"), Health);
+    UpdateOverheadHP();
 
     // 체력이 0 이하가 되면 사망 처리
     if (Health <= 0.0f)
@@ -197,6 +213,22 @@ float ASpartaCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 // 사망 처리 함수
 void ASpartaCharacter::OnDeath()
 {
-    UE_LOG(LogTemp, Error, TEXT("Character is Dead!"));
-    // 사망 후 로직 (입력 비활성화, 래그돌 등)
+    ASpartaGameState* SpartaGameState = GetWorld() ? GetWorld()->GetGameState<ASpartaGameState>() : nullptr;
+    if (SpartaGameState)
+    {
+        SpartaGameState->OnGameOver();
+    }
+}
+
+void ASpartaCharacter::UpdateOverheadHP()
+{
+    if (!OverheadWidget) return;
+
+    UUserWidget* OverheadWidgetInstance = OverheadWidget->GetUserWidgetObject();
+    if (!OverheadWidgetInstance) return;
+
+    if (UTextBlock* HPText = Cast<UTextBlock>(OverheadWidgetInstance->GetWidgetFromName(TEXT("OverHeadHP"))))
+    {
+        HPText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Health, MaxHealth)));
+    }
 }

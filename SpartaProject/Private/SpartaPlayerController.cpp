@@ -75,7 +75,6 @@ void ASpartaPlayerController::ShowMainMenu(bool bIsRestart)
             bShowMouseCursor = true;
             SetInputMode(FInputModeUIOnly());
 
-            // GetWidgetFromName으로 이름이 "StartButtonText"인 TextBlock 위젯을 찾습니다.
             if (UTextBlock* ButtonText = Cast<UTextBlock>(MainMenuWidgetInstance->GetWidgetFromName(TEXT("StartButtonText"))))
             {
                 if (bIsRestart)
@@ -85,6 +84,25 @@ void ASpartaPlayerController::ShowMainMenu(bool bIsRestart)
                 else
                 {
                     ButtonText->SetText(FText::FromString(TEXT("Start")));
+                }
+            }
+
+            if (bIsRestart)
+            {
+                UFunction* PlayAnimFunc = MainMenuWidgetInstance->FindFunction(TEXT("PlayGameOverAnim"));
+                if (PlayAnimFunc)
+                {
+                    MainMenuWidgetInstance->ProcessEvent(PlayAnimFunc, nullptr);
+                }
+
+                if (UTextBlock* TotalScoreText = Cast<UTextBlock>(MainMenuWidgetInstance->GetWidgetFromName(TEXT("TotalScoreText"))))
+                {
+                    if (USpartaGameInstance* SpartaGameInstance = Cast<USpartaGameInstance>(GetGameInstance()))
+                    {
+                        TotalScoreText->SetText(FText::FromString(
+                            FString::Printf(TEXT("Total Score: %d"), SpartaGameInstance->TotalScore)
+                        ));
+                    }
                 }
             }
         }
@@ -136,6 +154,6 @@ void ASpartaPlayerController::StartGame()
         SpartaGameInstance->CurrentLevelIndex = 0;
         SpartaGameInstance->TotalScore = 0;
     }
-
     UGameplayStatics::OpenLevel(GetWorld(), FName("BasicLevel"));
+    SetPause(false);
 }
